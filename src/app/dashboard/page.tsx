@@ -1,5 +1,6 @@
 "use client"
 
+import ImageGallery from "@/components/ImageGallery";
 import { createClient } from "@/utils/supabase/client";
 import { useState } from "react";
 import {
@@ -38,13 +39,7 @@ export default function Dashboard() {
     switch (activeTab) {
       case "images":
         return (
-          <div className="text-center py-20">
-            <HiPhotograph className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-700 mb-2">
-              Images Component
-            </h3>
-            <p className="text-gray-500">Your images will be displayed here</p>
-          </div>
+          <ImageGallery />
         );
       case "folders":
         return (
