@@ -11,7 +11,6 @@ import {
   HiFolder,
   HiUser,
   HiLogout,
-  HiBell,
 } from "react-icons/hi";
 
 export default function Dashboard() {
@@ -156,37 +155,6 @@ export default function Dashboard() {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
-        {/* Header */}
-        <header className="bg-white shadow-sm border-b border-gray-200 px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900 capitalize">
-                {navigationItems.find((item) => item.id === activeTab)?.name}
-              </h2>
-              <p className="text-gray-600 mt-1">
-                Manage your{" "}
-                {navigationItems
-                  .find((item) => item.id === activeTab)
-                  ?.name.toLowerCase()}{" "}
-                and settings
-              </p>
-            </div>
-
-            <div className="flex items-center space-x-4">
-              {/* Notifications */}
-              <button className="relative p-2 text-gray-400 hover:text-gray-600 transition-colors">
-                <HiBell className="w-6 h-6" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-              </button>
-
-              {/* Upload Button */}
-              <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
-                Upload Image
-              </button>
-            </div>
-          </div>
-        </header>
-
         {/* Content Area */}
         <main className="flex-1 p-6">
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 h-full">

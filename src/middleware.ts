@@ -35,7 +35,7 @@ export async function middleware(request: NextRequest) {
     error,
   } = await supabase.auth.getUser();
 
-  const isAuthPage = ["/signin", "/signup"].includes(request.nextUrl.pathname);
+  const isAuthPage = ["/signin", "/signup", "/"].includes(request.nextUrl.pathname);
   const isProtected = request.nextUrl.pathname.startsWith("/dashboard");
 
   // 1. Protected route & not logged in  →  redirect to /login

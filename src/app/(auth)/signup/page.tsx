@@ -24,13 +24,37 @@ export default function SignUpForm() {
   };
 
   const handleSubmit = async () => {
-    const supabase = await createClient()
+    const supabase = createClient()
     const { data, error } = await supabase.auth.signUp({
       email: formData.email,
       password: formData.password,
     });
     if (error) {
-        console.error(error)
+      console.error(error)
+      return
+    }
+    if (!data.user) {
+      console.error("user id does not exist")
+      return
+    }
+
+    const api_key = []
+    const possible_chars = [
+      ...'abcdefghijklmnopqrstuvwxyz',      // 26 lower
+      ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ',      // 26 upper
+      ...'0123456789',                      // 10 digits
+      '!', '_', '@'                         // 3 specials
+    ];
+    for (let i = 0; i < 20; i++) {
+      api_key.push(possible_chars[Math.floor(Math.random() * 65)])
+    }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const {data: res, error: err } = await supabase.from("users").insert({
+      id: data.user.id,
+      api_key: api_key.join("")
+    })
+    if (err) {
+      console.error(err)
     }
     router.replace("/dashboard")
   };

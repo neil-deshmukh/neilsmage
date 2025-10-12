@@ -1,6 +1,7 @@
 "use client"
 
 import { createClient } from "@/utils/supabase/client";
+import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   HiUpload,
@@ -11,53 +12,21 @@ import {
 } from "react-icons/hi";
 
 export default function ImageGallery() {
-  const [images, setImages] = useState([
-    {
-      id: 1,
-      name: "product-image.jpg",
-      url: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400",
-      size: "2.4 MB",
-      uploadedAt: "2025-09-28",
-    },
-    {
-      id: 2,
-      name: "banner-hero.png",
-      url: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400",
-      size: "1.8 MB",
-      uploadedAt: "2025-09-27",
-    },
-    {
-      id: 3,
-      name: "logo-design.svg",
-      url: "https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=400",
-      size: "456 KB",
-      uploadedAt: "2025-09-26",
-    },
-    {
-      id: 4,
-      name: "user-avatar.jpg",
-      url: "https://images.unsplash.com/photo-1560343090-f0409e92791a?w=400",
-      size: "890 KB",
-      uploadedAt: "2025-09-25",
-    },
-    {
-      id: 5,
-      name: "background.jpg",
-      url: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400",
-      size: "3.2 MB",
-      uploadedAt: "2025-09-24",
-    },
-    {
-      id: 6,
-      name: "thumbnail.png",
-      url: "https://images.unsplash.com/photo-1551963831-b3b1ca40c98e?w=400",
-      size: "1.1 MB",
-      uploadedAt: "2025-09-23",
-    },
-  ]);
-    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  interface Image {
+    id: string;
+    path: string;
+    name: string;
+    size?: string;
+    uploadedAt: string;
+    url: string;
+  }
+
+  const [images, setImages] = useState<Image[]>([]);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const supabase = createClient();
   
-  // 2. Ref to access the hidden file input element directly.
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
@@ -72,22 +41,20 @@ export default function ImageGallery() {
     }
   }, []);
 
-  /**
-   * Triggers the click event on the hidden file input when the main button is pressed.
-   */
   const handleButtonClick = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault()
     // Check if the ref is defined and then simulate a click
     fileInputRef.current?.click();
   }, []);
 
-  const [searchQuery, setSearchQuery] = useState("");
 
   const filteredImages = images.filter((img) =>
-    img.name.toLowerCase().includes(searchQuery.toLowerCase())
+    img.path.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleDelete = (id: number) => {
+  const handleDelete = async (id: string, path: string) => {
+    await supabase.from("user_images").delete().eq("id", id).select()
+    await supabase.storage.from("user-images").remove([path])
     setImages(images.filter((img) => img.id !== id));
   };
 
@@ -95,17 +62,11 @@ export default function ImageGallery() {
     navigator.clipboard.writeText(url);
     alert("URL copied to clipboard!");
   };
-  
-  useEffect(() => {
-    handleImageUpload()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedFile])
-  
+
   const handleImageUpload = async () => {
     if (!selectedFile) {
       return;
     }
-    const supabase = createClient()
     const user = await supabase.auth.getUser();
     const userId = user.data.user?.id;
 
@@ -120,22 +81,94 @@ export default function ImageGallery() {
     if (error) {
       console.error(error)
       return
-    } else {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { data, error } = await supabase
-        .from("user_images")
-        .insert({
-            user_id: userId,
-            file_path: filePath,
-            file_name: selectedFile.name,
-            file_size: selectedFile.size,
-            mime_type: selectedFile.type,
+    }
+    const { data: data_images, error: error_images } = await supabase
+      .from("user_images")
+      .insert({
+          user_id: userId,
+          file_path: filePath,
+          file_name: selectedFile.name,
+          file_size: selectedFile.size,
+          mime_type: selectedFile.type,
+      })
+      .select()
+    if (error_images) {
+      console.error(error)
+    }
+
+    const newImage = data_images?.[0]
+    const { id, file_path, created_at } = newImage
+    const created_at_date = new Date(created_at)
+    const uploadedAt = created_at_date.toISOString().split("T")[0]
+
+    const { data: res, error: err } = await supabase.storage.from("user-images").createSignedUrl(file_path, 4000)
+    if (error || !res) {
+      console.error(err)
+      return
+    }
+    
+    setImages((prev) => [...prev, {
+      id,
+      path: file_path,
+      name: selectedFile.name,
+      url: res.signedUrl,
+      uploadedAt
+    }])
+  }
+
+  const getAllImages = async () => {
+    const { data, error } = await supabase.from("user_images").select()
+    if (error) {
+      console.error(error)
+      return
+    }
+    return data
+  }
+  
+  useEffect(() => {
+    handleImageUpload()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedFile])
+
+  useEffect(() => {
+    let ignore = false
+
+    const loadData = async () => {
+      const data = await getAllImages()
+      if (!data) {
+        console.error("eerror");
+        return;
+      }
+      const newImages = []
+      for (const img of data) {
+        const { data: res } = await supabase.storage
+          .from("user-images")
+          .createSignedUrl(img.file_path, 4000);
+        if (!res) {
+          console.error("no url");
+          continue
+        }
+
+        const uploadedAt = new Date(img.created_at).toISOString().split("T")[0];
+
+        newImages.push({
+          id: img.id,
+          path: img.file_path,
+          name: img.file_name,
+          url: res.signedUrl ? res.signedUrl : "#",
+          uploadedAt,
         });
-      if (error) {
-        console.error(error)
+      }
+      if (!ignore) {
+        setImages(newImages);
       }
     }
-  }
+    loadData()
+
+    return () => {ignore = true}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  
 
   return (
     <div className="p-6">
@@ -185,11 +218,7 @@ export default function ImageGallery() {
           >
             {/* Image Preview */}
             <div className="aspect-video bg-gray-100 overflow-hidden">
-              <img
-                src={image.url}
-                alt={image.name}
-                className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-              />
+              <Image src={image.url} alt="image" width={150} height={150} />
             </div>
 
             {/* Image Info */}
@@ -198,14 +227,17 @@ export default function ImageGallery() {
                 {image.name}
               </h3>
               <div className="flex items-center justify-between text-sm text-gray-500 mb-3">
-                <span>{image.size}</span>
+                <span>{image.size ? image.size : "621KB"}</span>
                 <span>{image.uploadedAt}</span>
               </div>
 
               {/* Action Buttons */}
               <div className="flex items-center space-x-2">
                 <button
-                  onClick={() => handleCopyUrl(image.url)}
+                  onClick={() => {
+                    handleCopyUrl(image.url)
+                    alert("Copied (The link is temporary and will expire soon)")
+                  }}
                   className="flex-1 flex items-center justify-center px-3 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors text-sm"
                 >
                   <HiDuplicate className="w-4 h-4 mr-1" />
@@ -215,7 +247,7 @@ export default function ImageGallery() {
                   <HiDownload className="w-5 h-5" />
                 </button>
                 <button
-                  onClick={() => handleDelete(image.id)}
+                  onClick={() => handleDelete(image.id, image.path)}
                   className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors"
                 >
                   <HiTrash className="w-5 h-5" />

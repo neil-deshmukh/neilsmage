@@ -11,7 +11,17 @@ const nextConfig: NextConfig = {
       config.cache = false; // Disable caching entirely
     }
     return config;
-  }
+  },
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "pswufecieqhziwugdrkf.supabase.co",
+        port: "",
+        pathname: "/storage/**"
+      },
+    ],
+  },
 };
 
 export default nextConfig;
