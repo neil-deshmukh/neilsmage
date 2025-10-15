@@ -67,42 +67,22 @@ export default function ImageGallery() {
     if (!selectedFile) {
       return;
     }
-    const user = await supabase.auth.getUser();
-    const userId = user.data.user?.id;
 
-    const filePath = `${userId}/${Date.now()}-${selectedFile.name}`;
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { data, error } = await supabase.storage
-      .from("user-images")
-      .upload(filePath, selectedFile, {
-        cacheControl: "3600",
-        upsert: false,
-      });
-    if (error) {
-      console.error(error)
-      return
-    }
-    const { data: data_images, error: error_images } = await supabase
-      .from("user_images")
-      .insert({
-          user_id: userId,
-          file_path: filePath,
-          file_name: selectedFile.name,
-          file_size: selectedFile.size,
-          mime_type: selectedFile.type,
-      })
-      .select()
-    if (error_images) {
-      console.error(error)
-    }
-
-    const newImage = data_images?.[0]
-    const { id, file_path, created_at } = newImage
+    const body = new FormData()
+    body.append("file", selectedFile)
+    
+    const response = await fetch("http://localhost:3000/api/v1/images", {
+      method: "POST",
+      body,
+    }).then(res => res.json())
+    
+    const { id, file_path, created_at } = response.data
     const created_at_date = new Date(created_at)
+    console.log(response.data)
     const uploadedAt = created_at_date.toISOString().split("T")[0]
 
     const { data: res, error: err } = await supabase.storage.from("user-images").createSignedUrl(file_path, 4000)
-    if (error || !res) {
+    if (err || !res) {
       console.error(err)
       return
     }
