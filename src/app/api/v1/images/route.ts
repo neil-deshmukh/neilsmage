@@ -1,22 +1,22 @@
-import { createClient } from "@/utils/supabase/server";
+import { createAdmin } from "@/utils/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function GET(_req: NextRequest) {
-    const supabase = await createClient()
+    const supabase = await createAdmin()
     const { data, error } = await supabase.from("user_images").select()
     if (error) {
-        return NextResponse.json({data: null, error: "Was not able to fetch images", statusText: "FAIL"})
+        return NextResponse.json({data: null, error: "Was not able to fetch images"}, {status: 500})
     }
-    return NextResponse.json({data, error: null, statusText: "OK"})
+    return NextResponse.json({data, error: null}, {status: 200})
 }
 
 export async function POST(req: NextRequest) {
-    const supabase = await createClient()
+    const supabase = await createAdmin()
     const body = await req.formData()
 
     const file = body.get("file") as File
-    if (!file) return NextResponse.json({ data: null, error: "Did not recieve file", statusText: "FAIL" })
+    if (!file) return NextResponse.json({ data: null, error: "Did not recieve file" }, {status: 400})
     
     const user = await supabase.auth.getUser();
     const userId = user.data.user?.id;
@@ -39,8 +39,8 @@ export async function POST(req: NextRequest) {
 
     const { data, error: err } = await supabase.from("user_images").insert(newImage).select()
 
-    if (error) return NextResponse.json({ data: null, error: error.message, statusText: "FAIL" })
-    if (err) return NextResponse.json({ data: null, error: err.message, statusText: "FAIL" })
+    if (error) return NextResponse.json({ data: null, error: error.message}, {status: 500})
+    if (err) return NextResponse.json({ data: null, error: err.message}, {status: 500})
     
-    return NextResponse.json({data: data[0], error: null, statusText: "OK"})
+    return NextResponse.json({data: data[0], error: null}, {status: 201})
 }
